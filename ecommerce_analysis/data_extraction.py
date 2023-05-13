@@ -24,14 +24,17 @@ class DataExtraction:
         except FileExistsError:
             logging.info(f'carpeta {self.folder_to_store} ya existe')
 
-        with open(self.folder_to_store+f'\\{filename}.json', encoding='utf-8', mode='w') as file:
+        with open(self.folder_to_store +f'/{filename}.json' # +f'\\{filename}.json'
+                  , encoding='utf-8', mode='w') as file:
             json.dump(data_dumped, file, indent=4)
             logging.info(f'datos escritos en json')
 
 
 if __name__=='__main__':
     data_extractor = DataExtraction(url_to_read="https://api.mercadolibre.com/sites/MLA/search?q={query}", 
-                                    folder_to_store='D:\Study\mercado_libre\ecommerce_analysis\data\stage=raw\source=search\dataformat=json')
+                                    # folder_to_store='D:\Study\mercado_libre\ecommerce_analysis\data\stage=raw\source=search\dataformat=json'
+                                    folder_to_store='./data/stage=raw/source=search/dataformat=json'
+                                    )
     data, query = data_extractor.extract_by_query(query="tv%204k")
 
     data_extractor.store_as_json(data=data, filename=query)
