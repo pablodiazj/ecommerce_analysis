@@ -1,7 +1,8 @@
 """docstring"""
 import os
 import logging
-import urllib.request, json
+import urllib.request
+import json
 
 class DataExtraction:
     """"""
