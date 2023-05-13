@@ -7,19 +7,19 @@ import pandas as pd
 
 class DataStructure:
     """"""
-    def __init__(self, folder_to_read):
-        self.folder_to_read = folder_to_read
-
-    def transform_json_to_parquet(self):
+    def transform_json_to_parquet(self, folder_to_read):
         """"""
         # archivos a transformar
-        files_to_transform = glob.glob(self.folder_to_read + '/*') # '\*'
+        files_to_transform = glob.glob(folder_to_read + '/*') # '\*'
 
         for file in files_to_transform:
             with open(file,encoding='utf-8') as json_file:
                 json_loaded = json.load(json_file)
 
-            pdf = pd.DataFrame(json.loads(json_loaded)['results'])
+            try:
+                pdf = pd.DataFrame(json.loads(json_loaded)['results'])
+            except (KeyError, TypeError):
+                pdf = pd.DataFrame(json.loads(json_loaded))
 
             file_to_write = file\
                     .replace('dataformat=json', 'dataformat=parquet')\
@@ -36,7 +36,12 @@ class DataStructure:
             logging.info(f'datos escritos en parquet')
 
 if __name__=='__main__':
-    data_structure = DataStructure(folder_to_read='./data/stage=raw/source=search/dataformat=json'
-                                   # 'D:\Study\mercado_libre\ecommerce_analysis\data\stage=raw\source=search\dataformat=json'
+    iterate_over = {'folder_to_read': ["./data/stage=raw/source=sites/dataformat=json", "./data/stage=raw/source=search/dataformat=json"]}
+    
+    data_structure = DataStructure()
+    
+    for i in range(len(iterate_over['folder_to_read'])):
+        data_structure.transform_json_to_parquet(folder_to_read=iterate_over['folder_to_read'][i]
+                                    # 'D:\Study\mercado_libre\ecommerce_analysis\data\stage=raw\source=search\dataformat=json'
                                     )
-    data_structure.transform_json_to_parquet()
+        
