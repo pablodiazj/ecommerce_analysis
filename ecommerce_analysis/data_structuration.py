@@ -14,6 +14,8 @@ class DataStructure:
 
         pdf = pd.DataFrame()
 
+        publications_sites_written = []
+
         for file in files_to_transform:
             with open(file,encoding='utf-8') as json_file:
                 json_loaded = json.load(json_file)
@@ -34,6 +36,23 @@ class DataStructure:
                 os.makedirs(folder_to_store)
             except FileExistsError:
                 logging.info(f'carpeta {folder_to_store} ya existe')
+            
+            if 'source=search' in file_to_write:
+                publications_site = file_to_write.split('/')[-1]
+                publications_site = publications_site.split('_')[0]
+                if publications_site not in publications_sites_written:
+                    publications_file = '/'.join(file_to_write.split('/')[:-1]) + f'/site={publications_site}/publications.parquet'
+                    publications_file = publications_file.replace('source=search', 'source=search_publications')
+                    publications = pd.DataFrame(json.loads(json_loaded)['paging'], index=[0])
+
+                    try:
+                        folder_to_store_pubs = '/'.join(publications_file.split('/')[:-1])
+                        os.makedirs(folder_to_store_pubs)
+                    except FileExistsError:
+                        logging.info(f'carpeta {folder_to_store_pubs} ya existe')
+                    
+                    publications.to_parquet(path=publications_file, engine='pyarrow')
+                    publications_sites_written.append(publications_site)
             
         pdf.to_parquet(path=file_to_write, engine='pyarrow')
         logging.info(f'datos escritos en parquet')
