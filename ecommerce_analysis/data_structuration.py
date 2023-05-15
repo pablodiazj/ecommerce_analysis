@@ -12,12 +12,15 @@ class DataStructure:
         # archivos a transformar
         files_to_transform = glob.glob(folder_to_read + '/*') # '\*'
 
+        pdf = pd.DataFrame()
+
         for file in files_to_transform:
             with open(file,encoding='utf-8') as json_file:
                 json_loaded = json.load(json_file)
 
             try:
-                pdf = pd.DataFrame(json.loads(json_loaded)['results'])
+                pdf = pdf.append(pd.DataFrame(json.loads(json_loaded)['results']))
+                # pdf = pd.DataFrame(json.loads(json_loaded)['results'])
             except (KeyError, TypeError):
                 pdf = pd.DataFrame(json.loads(json_loaded))
 
@@ -32,8 +35,8 @@ class DataStructure:
             except FileExistsError:
                 logging.info(f'carpeta {folder_to_store} ya existe')
             
-            pdf.to_parquet(path=file_to_write, engine='pyarrow')
-            logging.info(f'datos escritos en parquet')
+        pdf.to_parquet(path=file_to_write, engine='pyarrow')
+        logging.info(f'datos escritos en parquet')
 
 if __name__=='__main__':
     iterate_over = {'folder_to_read': ["./data/stage=raw/source=sites/dataformat=json", "./data/stage=raw/source=search/dataformat=json"]}
