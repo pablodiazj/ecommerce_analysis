@@ -14,7 +14,7 @@ class DataExtraction:
             url_to_read = url_to_read + query_str
         
         if offset is not None:
-            query_str = query_str + f'&offset={offset}'
+            url_to_read = url_to_read + f'&offset={offset}'
         
         with request.urlopen(url_to_read) as url:
             data = json.load(url)
