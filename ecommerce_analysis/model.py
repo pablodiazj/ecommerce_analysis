@@ -1,11 +1,18 @@
 import preprocess
 import pandas as pd
-import lightgbm
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats import t
-from scipy.stats import ttest_ind
+from hyperopt import hp, tpe
+from hyperopt.fmin import fmin
+
+from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+from sklearn.ensemble import RandomForestRegressor
+
+import xgboost as xgb
+import lightgbm as lgbm
+
+import joblib
+import os
+import logging
 
 search_folder = "/workspaces/ecommerce_analysis/data/stage=raw/source=search/dataformat=parquet"
 sites_folder = "/workspaces/ecommerce_analysis/data/stage=raw/source=sites/dataformat=parquet"
@@ -16,9 +23,31 @@ money_conversion = {'ARS': 0.0043,
                     'CLP': 0.0013,
                     'PEN': 0.27}
 
+scoring = 'neg_mean_absolute_error'
+max_evals = 30
+
 categorical_features = ['listing_type_id', 'buying_mode', 'site_id', 'category_id', 'has_discount', 'accepts_mercadopago', 'condition']
 numerical_features = ['order_backend', 'price', 'discount_percentage', 'available_quantity']
 y = ['sold_quantity']
+
+path_to_store_models = "/workspaces/ecommerce_analysis/models/"
+path_to_store_datasets = "/workspaces/ecommerce_analysis/data/stage=preprocess/"
+
+space_rf = {
+    'n_estimators': hp.quniform('n_estimators', 25, 500, 25),
+    'max_depth': hp.quniform('max_depth', 1, 20, 1)
+}
+
+space_xgb = {
+    'max_depth': hp.quniform('max_depth', 2, 20, 1),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.3, 1.0),
+    'gamma': hp.uniform('gamma', 0.0, 0.5),
+}
+
+space_lgbm = {
+    'num_leaves': hp.quniform('num_leaves', 8, 256, 2),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.3, 1.0),
+}
 
 # ## diccionarios:
 # - tags (otras descripciones - jerarquias a investigar)
@@ -30,6 +59,7 @@ y = ['sold_quantity']
 
 search_results = pd.read_parquet(search_folder, engine="pyarrow")
 
+# Preprocess
 preprocesor = preprocess.Preprocess()
 
 train_df = preprocesor.drop_duplicated(pdf=search_results, cols=['id'])
@@ -37,40 +67,64 @@ train_df = preprocesor.calc_has_discount(pdf=train_df)
 train_df = preprocesor.calc_discount_percentage(pdf=train_df)
 print(train_df.columns)
 
-import numpy as np
-import pandas as pd
-
-from hyperopt import hp, tpe
-from hyperopt.fmin import fmin
-
-from sklearn.model_selection import cross_val_score, StratifiedKFold
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import make_scorer
-
-import xgboost as xgb
-
-import lightgbm as lgbm
-
+# Training
 X = train_df[numerical_features]
-X = pd.concat([X, pd.get_dummies(train_df[categorical_features], columns=categorical_features)], ignore_index=False)
+X = pd.concat([X, pd.get_dummies(train_df[categorical_features], columns=categorical_features)], axis=1)
 Y = train_df[y[0]]
 
-def objective(params):
+# Train / test split
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=187)
+
+utilidades = preprocess.Utils()
+utilidades.save_joblib({'X_train': X_train, 'X_test': X_test,
+             'Y_train': Y_train, 'Y_test': Y_test}, path_to_store_datasets + 'train_test_split.joblib')
+
+def objective_rf(params):
     params = {'n_estimators': int(params['n_estimators']), 'max_depth': int(params['max_depth'])}
-    clf = RandomForestRegressor(n_jobs=4, **params)
-    score = cross_val_score(clf, X, Y, cv=StratifiedKFold(), scoring='neg_root_mean_squared_error').mean()
+    clf = RandomForestRegressor(n_jobs=4, criterion='squared_error', **params)
+    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
     print("Score {:.2f} params {}".format(score, params))
     return score
 
-space = {
-    'n_estimators': hp.quniform('n_estimators', 25, 500, 25),
-    'max_depth': hp.quniform('max_depth', 1, 10, 1)
-}
+def objective_xgb(params):
+    params = {
+        'max_depth': int(params['max_depth']),
+        'gamma': "{:.3f}".format(params['gamma']),
+        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
+    }
+    
+    clf = xgb.XGBRegressor(
+        n_estimators=250,
+        learning_rate=0.001,
+        n_jobs=4,
+        **params
+    )
+    
+    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
+    print("Score {:.3f} params {}".format(score, params))
+    return score
 
-best_rf = fmin(fn=objective,
-            space=space,
+def objective_lgbm(params):
+    params = {
+        'num_leaves': int(params['num_leaves']),
+        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
+    }
+    
+    clf = lgbm.LGBMRegressor(
+        n_estimators=500,
+        learning_rate=0.001,
+        **params
+    )
+    
+    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
+    print("Score {:.3f} params {}".format(score, params))
+    return score
+
+# modelos = preprocess.Models()
+best_rf = fmin(fn=objective_rf,
+            space=space_rf,
             algo=tpe.suggest,
-            max_evals=10)
+            max_evals=max_evals)
 
 for key, value in best_rf.items():
     best_rf[key] = int(value)
@@ -80,34 +134,10 @@ rf_model = RandomForestRegressor(
     n_jobs=4,
     **best_rf)
 
-def objective(params):
-    params = {
-        'max_depth': int(params['max_depth']),
-        'gamma': "{:.3f}".format(params['gamma']),
-        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
-    }
-    
-    clf = xgb.XGBRegressor(
-        n_estimators=250,
-        learning_rate=0.05,
-        n_jobs=4,
-        **params
-    )
-    
-    score = cross_val_score(clf, X, Y, cv=StratifiedKFold(), scoring='neg_root_mean_squared_error').mean()
-    print("Score {:.3f} params {}".format(score, params))
-    return score
-
-space = {
-    'max_depth': hp.quniform('max_depth', 2, 8, 1),
-    'colsample_bytree': hp.uniform('colsample_bytree', 0.3, 1.0),
-    'gamma': hp.uniform('gamma', 0.0, 0.5),
-}
-
-best_xgb = fmin(fn=objective,
-            space=space,
+best_xgb = fmin(fn=objective_xgb,
+            space=space_xgb,
             algo=tpe.suggest,
-            max_evals=10)
+            max_evals=max_evals)
 
 print(best_xgb)
 
@@ -122,31 +152,10 @@ xgb_model = xgb.XGBRegressor(
         **best_xgb
     )
 
-def objective(params):
-    params = {
-        'num_leaves': int(params['num_leaves']),
-        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
-    }
-    
-    clf = lgbm.LGBMRegressor(
-        n_estimators=500,
-        learning_rate=0.01,
-        **params
-    )
-    
-    score = cross_val_score(clf, X, Y, cv=StratifiedKFold(), scoring='neg_root_mean_squared_error').mean()
-    print("Score {:.3f} params {}".format(score, params))
-    return score
-
-space = {
-    'num_leaves': hp.quniform('num_leaves', 8, 128, 2),
-    'colsample_bytree': hp.uniform('colsample_bytree', 0.3, 1.0),
-}
-
-best_lgbm = fmin(fn=objective,
-            space=space,
+best_lgbm = fmin(fn=objective_lgbm,
+            space=space_lgbm,
             algo=tpe.suggest,
-            max_evals=10)
+            max_evals=max_evals)
 
 print(best_lgbm)
 
@@ -159,6 +168,16 @@ lgbm_model = lgbm.LGBMRegressor(
         **best_lgbm
     )
 
-print(cross_val_score(rf_model, X, Y, cv=StratifiedKFold(), scoring='neg_root_mean_squared_error').mean())
-print(cross_val_score(xgb_model, X, Y, cv=StratifiedKFold(), scoring='neg_root_mean_squared_error').mean())
-print(cross_val_score(lgbm_model, X, Y, cv=StratifiedKFold(), scoring='neg_root_mean_squared_error').mean())
+print(cross_val_score(rf_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean())
+print(cross_val_score(xgb_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean())
+print(cross_val_score(lgbm_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean())
+
+try:
+    os.makedirs(path_to_store_models)
+except FileExistsError:
+    logging.warning(f'path {path_to_store_models} already exists')
+    pass
+
+joblib.dump(rf_model, path_to_store_models + 'rf_model.joblib')
+joblib.dump(xgb_model, path_to_store_models + 'xgb_model.joblib')
+joblib.dump(lgbm_model, path_to_store_models + 'lgbm_model.joblib')

@@ -1,5 +1,14 @@
 import pandas as pd
 
+from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+from sklearn.ensemble import RandomForestRegressor
+
+import xgboost as xgb
+import lightgbm as lgbm
+import joblib
+import os
+import logging
+
 class Preprocess():
 
     def drop_duplicated(self, pdf, cols):
@@ -14,3 +23,21 @@ class Preprocess():
         pdf['has_discount'] = pdf['original_price']\
             .apply(lambda x: 0 if pd.isna(x) else 1)
         return pdf
+
+# class Models():
+
+
+class Utils():
+    def get_file_folder(self, path):
+        return '/'.join(path.split('/')[:-1])
+
+    def save_joblib(self, obj, path):
+        folder_path = self.get_file_folder(path)
+        try:
+            os.makedirs(folder_path)
+        except FileExistsError:
+            logging.warning(f'path {folder_path} already exists')
+            pass
+
+        joblib.dump(obj, path)
+        logging.info(f'data stored in {path}')
