@@ -29,7 +29,7 @@ def objective_xgb(params):
     }
     
     clf = xgb.XGBRegressor(
-        n_estimators=250,
+        n_estimators=500,
         learning_rate=0.001,
         n_jobs=4,
         **params
@@ -168,9 +168,16 @@ lgbm_model = lgbm.LGBMRegressor(
         **best_lgbm
     )
 
-print(cross_val_score(rf_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean())
-print(cross_val_score(xgb_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean())
-print(cross_val_score(lgbm_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean())
+results_dict = {'rf_model': cross_val_score(rf_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean(),
+                'xgb_model': cross_val_score(xgb_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean(),
+                'lgbm_model': cross_val_score(lgbm_model, X, Y, cv=StratifiedKFold(), scoring=scoring).mean()}
+
+# cross val devuelve score negativo, por lo que buscamos el más cercano a 0
+best_model = max(results_dict, key=results_dict.get)
+
+rf_model.fit(X_train, Y_train)
+xgb_model.fit(X_train, Y_train)
+lgbm_model.fit(X_train, Y_train)
 
 try:
     os.makedirs(path_to_store_models)
@@ -181,3 +188,6 @@ except FileExistsError:
 joblib.dump(rf_model, path_to_store_models + 'rf_model.joblib')
 joblib.dump(xgb_model, path_to_store_models + 'xgb_model.joblib')
 joblib.dump(lgbm_model, path_to_store_models + 'lgbm_model.joblib')
+
+# best model
+joblib.dump(locals()[best_model], path_to_store_models + 'best_model.joblib')

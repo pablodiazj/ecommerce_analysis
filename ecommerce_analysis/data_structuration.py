@@ -6,9 +6,9 @@ import json
 import pandas as pd
 
 class DataStructure:
-    """"""
+    """clase que contiene metodos para dar estructura a datos"""
     def transform_json_to_parquet(self, folder_to_read):
-        """"""
+        """convierte jsons a parquet"""
         # archivos a transformar
         files_to_transform = glob.glob(folder_to_read + '/*') # '\*'
 
@@ -16,6 +16,7 @@ class DataStructure:
 
         publications_sites_written = []
 
+        # iteramos sobre todos los archivos en la carpeta
         for file in files_to_transform:
             with open(file,encoding='utf-8') as json_file:
                 json_loaded = json.load(json_file)
@@ -35,8 +36,9 @@ class DataStructure:
                 folder_to_store = '/'.join(file_to_write.split('/')[:-1])
                 os.makedirs(folder_to_store)
             except FileExistsError:
-                logging.info(f'carpeta {folder_to_store} ya existe')
+                logging.warning(f'carpeta {folder_to_store} ya existe')
             
+            # agregamos control para obtener cantidad total de publicaciones
             if 'source=search' in file_to_write:
                 publications_site = file_to_write.split('/')[-1]
                 publications_site = publications_site.split('_')[0]
@@ -49,7 +51,7 @@ class DataStructure:
                         folder_to_store_pubs = '/'.join(publications_file.split('/')[:-1])
                         os.makedirs(folder_to_store_pubs)
                     except FileExistsError:
-                        logging.info(f'carpeta {folder_to_store_pubs} ya existe')
+                        logging.warning(f'carpeta {folder_to_store_pubs} ya existe')
                     
                     publications.to_parquet(path=publications_file, engine='pyarrow')
                     publications_sites_written.append(publications_site)

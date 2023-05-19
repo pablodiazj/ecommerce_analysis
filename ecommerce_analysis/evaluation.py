@@ -1,5 +1,7 @@
 import joblib
 from sklearn.model_selection import cross_val_score, StratifiedKFold
+import shap
+import matplotlib.pyplot as plt
 
 path_to_store_datasets = "/workspaces/ecommerce_analysis/data/stage=preprocess/"
 path_to_store_models = "/workspaces/ecommerce_analysis/models/"
@@ -18,3 +20,11 @@ lgbm_model = joblib.load(path_to_store_models + 'lgbm_model.joblib')
 print(cross_val_score(rf_model, X_test, Y_test, cv=StratifiedKFold(), scoring=scoring).mean())
 print(cross_val_score(xgb_model, X_test, Y_test, cv=StratifiedKFold(), scoring=scoring).mean())
 print(cross_val_score(lgbm_model, X_test, Y_test, cv=StratifiedKFold(), scoring=scoring).mean())
+
+# almacenamos shap values para entender importancia de variables
+for model in ['rf_model', 'xgb_model', 'lgbm_model']:
+    explainer = shap.TreeExplainer(locals()[model])
+    shap_values = explainer.shap_values(X_test)
+
+    shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
+    plt.savefig(f'./{model}.png')

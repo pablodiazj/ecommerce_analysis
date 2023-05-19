@@ -25,11 +25,9 @@ class Preprocess():
         return pdf
     
     def get_seller_data(self, pdf):
-        
-
+        return None
 
 # class Models():
-
 
 class Utils():
     def get_file_folder(self, path):

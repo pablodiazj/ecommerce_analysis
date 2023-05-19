@@ -6,9 +6,9 @@ import json
 import time
 
 class DataExtraction:
-    """docstring"""
+    """clase contenedora de metodos para extraer datos"""
     def extract_from_url(self, url_to_read, site=None, query=None, offset=None):
-        """docstring"""
+        """descarga datos desde ciertas urls de mercado libre (api search)"""
         if query is not None:
             query_str = f'/{site}/search?q={query}'
             url_to_read = url_to_read + query_str
@@ -24,7 +24,7 @@ class DataExtraction:
         return data, query
 
     def store_as_json(self, data, folder_to_store, filename):
-        """docstring"""
+        """toma json obj, lo transforma a string y lo persiste en disco"""
         data_dumped = json.dumps(data)
 
         try:
