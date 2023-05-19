@@ -1,4 +1,6 @@
 import pandas as pd
+from urllib import request
+import json
 
 # data tests
 def test_unicity_search_parquet():
@@ -31,3 +33,13 @@ test_case_api_score = {
     "condition_not_specified": 0,
     "condition_used": 0
 }
+
+def test_api():
+    req = request.Request('http://127.0.0.1:5000/', method="POST")
+    req.add_header('Content-Type', 'application/json')
+    data = test_case_api_score
+    data = json.dumps(data)
+    data = data.encode()
+    r = request.urlopen(req, data=data)
+    content = r.read()
+    print(content)
