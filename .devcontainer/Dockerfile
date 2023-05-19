@@ -11,8 +11,8 @@ RUN pip install lightgbm
 RUN pip install hyperopt
 RUN pip install xgboost
 RUN pip install wordcloud
-RUN pip install --user shap
-RUN pip install --user --upgrade Flask>=2.2.2
+RUN pip install shap
+RUN pip install --upgrade Flask>=2.2.2
 
 # [Optional] Uncomment this section to install additional OS packages.
 # RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
