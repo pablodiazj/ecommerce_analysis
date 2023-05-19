@@ -6,7 +6,11 @@ COPY environment.yml* .devcontainer/noop.txt /tmp/conda-tmp/
 RUN if [ -f "/tmp/conda-tmp/environment.yml" ]; then umask 0002 && /opt/conda/bin/conda env update -n base -f /tmp/conda-tmp/environment.yml; fi \
     && rm -rf /tmp/conda-tmp
 
-RUN pip install pyarrow, lightgbm, hyperopt, xgboost, wordcloud
+RUN pip install pyarrow
+RUN pip install lightgbm
+RUN pip install hyperopt
+RUN pip install xgboost
+RUN pip install wordcloud
 RUN pip install --user shap
 RUN pip install --user --upgrade Flask>=2.2.2
 

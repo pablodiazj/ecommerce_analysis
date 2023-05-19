@@ -43,3 +43,15 @@ class Utils():
 
         joblib.dump(obj, path)
         logging.info(f'data stored in {path}')
+
+    def save_parquet(self, obj, path):
+        folder_path = self.get_file_folder(path)
+        try:
+            os.makedirs(folder_path)
+        except FileExistsError:
+            logging.warning(f'path {folder_path} already exists')
+            pass
+
+        # joblib.dump(obj, path)
+        obj.to_parquet(path, engine='pyarrow')
+        logging.info(f'data stored in {path}')
