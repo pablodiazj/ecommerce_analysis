@@ -38,7 +38,8 @@ class DataExtraction:
             logging.info(f'datos escritos en json')
 
 
-if __name__=='__main__':
+def get():
+    '''metodo principal'''
     iterate_over = {'url_to_read': ["https://api.mercadolibre.com/sites", "https://api.mercadolibre.com/sites", "https://api.mercadolibre.com/sites", "https://api.mercadolibre.com/sites", "https://api.mercadolibre.com/sites"],
                     'folder_to_store': ["./data/stage=raw/source=sites/dataformat=json", "./data/stage=raw/source=search/dataformat=json", "./data/stage=raw/source=search/dataformat=json", "./data/stage=raw/source=search/dataformat=json", "./data/stage=raw/source=search/dataformat=json"],
                     'filename': ["sites", "{site}_{query}", "{site}_{query}", "{site}_{query}", "{site}_{query}"],

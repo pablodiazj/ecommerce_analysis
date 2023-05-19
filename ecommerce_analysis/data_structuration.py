@@ -57,7 +57,10 @@ class DataStructure:
         pdf.to_parquet(path=file_to_write, engine='pyarrow')
         logging.info(f'datos escritos en parquet')
 
-if __name__=='__main__':
+        return 'pass'
+
+def get():
+    '''metodo principal'''
     iterate_over = {'folder_to_read': ["./data/stage=raw/source=sites/dataformat=json", "./data/stage=raw/source=search/dataformat=json"]}
     
     data_structure = DataStructure()
@@ -66,4 +69,3 @@ if __name__=='__main__':
         data_structure.transform_json_to_parquet(folder_to_read=iterate_over['folder_to_read'][i]
                                     # 'D:\Study\mercado_libre\ecommerce_analysis\data\stage=raw\source=search\dataformat=json'
                                     )
-        

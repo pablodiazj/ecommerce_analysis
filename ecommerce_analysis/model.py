@@ -14,6 +14,47 @@ import joblib
 import os
 import logging
 
+def objective_rf(params):
+    params = {'n_estimators': int(params['n_estimators']), 'max_depth': int(params['max_depth'])}
+    clf = RandomForestRegressor(n_jobs=4, criterion='squared_error', **params)
+    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
+    print("Score {:.2f} params {}".format(score, params))
+    return score
+
+def objective_xgb(params):
+    params = {
+        'max_depth': int(params['max_depth']),
+        'gamma': "{:.3f}".format(params['gamma']),
+        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
+    }
+    
+    clf = xgb.XGBRegressor(
+        n_estimators=250,
+        learning_rate=0.001,
+        n_jobs=4,
+        **params
+    )
+    
+    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
+    print("Score {:.3f} params {}".format(score, params))
+    return score
+
+def objective_lgbm(params):
+    params = {
+        'num_leaves': int(params['num_leaves']),
+        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
+    }
+    
+    clf = lgbm.LGBMRegressor(
+        n_estimators=500,
+        learning_rate=0.001,
+        **params
+    )
+    
+    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
+    print("Score {:.3f} params {}".format(score, params))
+    return score
+
 search_folder = "/workspaces/ecommerce_analysis/data/stage=raw/source=search/dataformat=parquet"
 sites_folder = "/workspaces/ecommerce_analysis/data/stage=raw/source=sites/dataformat=parquet"
 publications_folder = "/workspaces/ecommerce_analysis/data/stage=raw/source=search_publications/dataformat=parquet"
@@ -78,47 +119,6 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_
 utilidades = preprocess.Utils()
 utilidades.save_joblib({'X_train': X_train, 'X_test': X_test,
              'Y_train': Y_train, 'Y_test': Y_test}, path_to_store_datasets + 'train_test_split.joblib')
-
-def objective_rf(params):
-    params = {'n_estimators': int(params['n_estimators']), 'max_depth': int(params['max_depth'])}
-    clf = RandomForestRegressor(n_jobs=4, criterion='squared_error', **params)
-    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
-    print("Score {:.2f} params {}".format(score, params))
-    return score
-
-def objective_xgb(params):
-    params = {
-        'max_depth': int(params['max_depth']),
-        'gamma': "{:.3f}".format(params['gamma']),
-        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
-    }
-    
-    clf = xgb.XGBRegressor(
-        n_estimators=250,
-        learning_rate=0.001,
-        n_jobs=4,
-        **params
-    )
-    
-    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
-    print("Score {:.3f} params {}".format(score, params))
-    return score
-
-def objective_lgbm(params):
-    params = {
-        'num_leaves': int(params['num_leaves']),
-        'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
-    }
-    
-    clf = lgbm.LGBMRegressor(
-        n_estimators=500,
-        learning_rate=0.001,
-        **params
-    )
-    
-    score = cross_val_score(clf, X_train, Y_train, cv=StratifiedKFold(), scoring=scoring).mean()
-    print("Score {:.3f} params {}".format(score, params))
-    return score
 
 # modelos = preprocess.Models()
 best_rf = fmin(fn=objective_rf,

@@ -23,6 +23,10 @@ class Preprocess():
         pdf['has_discount'] = pdf['original_price']\
             .apply(lambda x: 0 if pd.isna(x) else 1)
         return pdf
+    
+    def get_seller_data(self, pdf):
+        
+
 
 # class Models():
 
